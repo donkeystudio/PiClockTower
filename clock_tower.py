@@ -32,10 +32,10 @@ class ClockTower:
                     hour -= 12
                 
                 #tolling in action
-                os.system("aplay MainTune.wav")
+                os.system("aplay -q MainTune.wav")
                 #plays a different amount of bell tolls depending on the hour
                 while(hour > 0):
-                    os.system("aplay BellToll.wav")
+                    os.system("aplay -q BellToll.wav")
                     hour -= 1
                     time.sleep(0.5)
 
