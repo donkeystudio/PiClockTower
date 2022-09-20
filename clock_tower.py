@@ -1,5 +1,9 @@
+from datetime import datetime, timedelta
+import logging
+import sched
 import time
 import os
+import pytz
 
 
 class ClockTower:
@@ -11,6 +15,9 @@ class ClockTower:
     path_hour_chime = 'chimes/BellToll.wav'
 
     is_quiet_time = False;
+    time_scheduler = sched.scheduler(time.time, time.sleep)
+
+    _logger = logging.getLogger(__name__)
     
     def __init__(self) -> None:
         pass
@@ -37,32 +44,41 @@ class ClockTower:
 
 
     def chime(self):
-        if self.is_quiet_time:
-            return
-        
-        hour = time.localtime().tm_hour
-        minute = time.localtime().tm_min
-        
-        #doesn't play too early or too late
-        if hour in self.allowed_range:
-            #ensure it is tolling time
-            if minute == 0:
-                #adjust for 24 hour time
-                if hour > 12:
-                    hour -= 12
-                
-                #tolling in action
-                os.system(f'aplay -q {self.path_main_chime}')
-                #plays a different amount of bell tolls depending on the hour
-                while(hour > 0):
-                    os.system(f'aplay -q {self.path_hour_chime}')
-                    hour -= 1
-                    time.sleep(0.5)
+        self._logger.debug(f'In now at:{datetime.now()}')
+        if self.is_quiet_time is False:
+            time_now = datetime.now()
+            hour = time_now.hour
+            minute = time_now.minute
+            
+            #doesn't play too early or too late
+            if hour in self.allowed_range:
+                #ensure it is tolling time
+                if minute == 0:
+                    #adjust for 24 hour time
+                    if hour > 12:
+                        hour -= 12
+                    
+                    #tolling in action
+                    os.system(f'aplay -q {self.path_main_chime}')
+                    #plays a different amount of bell tolls depending on the hour
+                    while(hour > 0):
+                        os.system(f'aplay -q {self.path_hour_chime}')
+                        hour -= 1
+                        time.sleep(0.5)
+
+        #Schedule for the next chime
+        self.schedule_next_chime()
+
+
+    def schedule_next_chime(self):
+        time_now = datetime.now()
+        next_hour = datetime.strptime(f'{time_now.day}-{time_now.month}-{time_now.year} {time_now.hour}:00:00', '%d-%m-%Y %H:%M:%S') + timedelta(hours=1)
+        delay = (next_hour.astimezone(pytz.utc) - time_now.astimezone(pytz.utc)).total_seconds()
+        self._logger.debug(f'Next chime is at:{next_hour}, Delay: f{delay}')
+        self.time_scheduler.enter(delay,1, self.chime)
+        self.time_scheduler.run()
 
 
     def run(self):
-        #main loop
-        while True:   
-            self.chime()
-            #makes sure it doesn't run more than once per hour
-            time.sleep(60)
+        #Start this will do
+        self.chime()
