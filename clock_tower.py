@@ -14,8 +14,9 @@ class ClockTower:
     path_main_chime = 'chimes/MainTune.wav'
     path_hour_chime = 'chimes/BellToll.wav'
 
-    is_quiet_time = False;
-    time_scheduler = sched.scheduler(time.time, time.sleep)
+    is_quiet_time   = False;
+    time_scheduler  = sched.scheduler(time.time, time.sleep)
+    scheduler_list  = [time_scheduler]
 
     _logger = logging.getLogger(__name__)
     
@@ -67,18 +68,24 @@ class ClockTower:
                         time.sleep(0.5)
 
         #Schedule for the next chime
-        self.schedule_next_chime()
+        self.scheduler_list.append(self.time_scheduler)
 
 
-    def schedule_next_chime(self):
+    def schedule_next_chime(self, scheduler: sched.scheduler):
         time_now = datetime.now()
         next_hour = datetime.strptime(f'{time_now.day}-{time_now.month}-{time_now.year} {time_now.hour}:00:00', '%d-%m-%Y %H:%M:%S') + timedelta(hours=1)
         delay = (next_hour.astimezone(pytz.utc) - time_now.astimezone(pytz.utc)).total_seconds()
         self._logger.debug(f'Next chime is at:{next_hour}, Delay: f{delay}')
-        self.time_scheduler.enter(delay,1, self.chime)
-        self.time_scheduler.run()
+        scheduler.enter(delay,1, self.chime)
+        scheduler.run()
+
+    
+    def monitor_scheduler(self):
+        while True:
+            if len(self.scheduler_list) > 0:
+                self.schedule_next_chime(self.scheduler_list.pop())
 
 
     def run(self):
         #Start this will do
-        self.chime()
+        self.monitor_sechduler()
