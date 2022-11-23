@@ -88,4 +88,4 @@ class ClockTower:
 
     def run(self):
         #Start this will do
-        self.monitor_sechduler()
+        self.monitor_scheduler()
